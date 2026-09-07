@@ -169,6 +169,8 @@ const TRANSLATIONS = {
     statusUnused: 'অব্যবহৃত',
     noBizNameYet: '(এখনো নাম দেওয়া হয়নি)',
     toastCodeCopied: 'কোড কপি হয়েছে',
+    currencyLabel: 'মুদ্রা / কারেন্সি চিহ্ন',
+    currencyPlaceholder: 'যেমন: ৳, IQD, $, SAR',
   },
   ar: {
     appName: 'دفتر الحسابات',
@@ -325,6 +327,8 @@ const TRANSLATIONS = {
     statusUnused: 'غير مستخدم',
     noBizNameYet: '(لم يُحدد الاسم بعد)',
     toastCodeCopied: 'تم نسخ الرمز',
+    currencyLabel: 'رمز العملة',
+    currencyPlaceholder: 'مثال: IQD, $, SAR, ৳',
   }
 };
 function t(key){ return TRANSLATIONS[state.lang][key]; }
@@ -383,7 +387,11 @@ function bn(n){ return Number(n||0).toLocaleString(state.lang==='ar' ? 'en-US' :
 function bnDate(d){ return new Date(d).toLocaleDateString(state.lang==='ar' ? 'ar-IQ' : 'bn-BD',{day:'numeric',month:'short',year:'numeric'}); }
 function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function phoneToEmail(phone){ return phone.replace(/[^0-9]/g,'') + '@hisabkhata.app'; }
-function currencySuffix(){ return t('currencySuffix') || ''; }
+function currencySuffix(){
+  if(state.publicMode && state.storefront && state.storefront.currency) return state.storefront.currency;
+  if(state.workspace && state.workspace.currency) return state.workspace.currency;
+  return t('currencySuffix') || '';
+}
 
 // ==========================================================
 // কান্ট্রি কোড + ফোন নম্বর গ্রুপ (দুটো আলাদা ঘর: কোড + স্থানীয় নম্বর)
@@ -718,9 +726,9 @@ function render(){
   let html = `
     <header class="cover">
       <div class="cover-top">
+        ${logoHtml}
         <div class="cover-title-wrap">
-          ${logoHtml}
-          <div><h1 class="cover-title">${escapeHtml(state.workspace.business_name || t('appName'))}</h1></div>
+          <h1 class="cover-title">${escapeHtml(state.workspace.business_name || t('appName'))}</h1>
         </div>
         <button class="gear-btn" id="gearBtn" title="${t('settingsTitle')}">⚙</button>
       </div>
@@ -1066,6 +1074,7 @@ function renderSettingsSheet(){
     <div class="divider"></div>
     <div class="field"><label>${t('logoLabel')}</label><input type="file" id="logoFile" accept="image/*"></div>
     <div class="field"><label>${t('bizNameLabel')}</label><input id="setBizName" value="${escapeHtml(state.workspace.business_name||'')}"></div>
+    <div class="field"><label>${t('currencyLabel')}</label><input id="setCurrency" placeholder="${t('currencyPlaceholder')}" value="${escapeHtml(state.workspace.currency || t('currencySuffix'))}"></div>
     <div class="divider"></div>
     <div class="field"><label>${t('changeLoginPhone')} ${t('changeLoginPhoneNote')}</label>${phoneGroupHtml('setPhone')}</div>
     <div class="field"><label>${t('newPasswordLabel')}</label><input id="setNewPass" type="password" placeholder=""></div>
@@ -1195,14 +1204,17 @@ function renderStorefront(){
   const total = cartTotal();
   return `
     <header class="cover">
-      <div class="cover-title-wrap">${logoHtml}<h1 class="cover-title">${escapeHtml(state.storefront.business_name||t('appName'))}</h1></div>
+      <div class="cover-top">
+        ${logoHtml}
+        <div class="cover-title-wrap"><h1 class="cover-title">${escapeHtml(state.storefront.business_name||t('appName'))}</h1></div>
+      </div>
       <p class="cover-sub">${t('storefrontTagline')}</p>
     </header>
     <main style="padding-bottom:100px;">
       ${prodRows}
       <h2 class="section-title">${t('orderTotalLabel')}: ${bn(total)}${currencySuffix()}</h2>
       <div class="field"><label>${t('yourNameLabel')}</label><input id="ofName" placeholder="${t('namePlaceholder')}"></div>
-      <div class="field"><label>${t('yourPhoneLabel')}</label><input id="ofPhone" placeholder="+8801XXXXXXXXX"></div>
+      <div class="field"><label>${t('yourPhoneLabel')}</label>${phoneGroupHtml('of')}</div>
       ${state.storefrontError?`<div class="field err">${escapeHtml(state.storefrontError)}</div>`:''}
       <button class="primary" id="placeOrderBtn" style="width:100%;" ${state.storefrontBusy?'disabled':''}>${state.storefrontBusy?t('busy'):t('placeOrderBtn')}</button>
     </main>
@@ -1210,12 +1222,14 @@ function renderStorefront(){
 }
 
 function attachStorefrontEvents(){
+  const root = document.getElementById('root');
+  attachPhoneGroupEvents(root);
   document.querySelectorAll('[data-qtyplus]').forEach(b=> b.addEventListener('click', ()=> changeCartQty(b.dataset.qtyplus, 1)));
   document.querySelectorAll('[data-qtyminus]').forEach(b=> b.addEventListener('click', ()=> changeCartQty(b.dataset.qtyminus, -1)));
   const placeBtn = document.getElementById('placeOrderBtn');
   if(placeBtn) placeBtn.addEventListener('click', ()=>{
     const name = document.getElementById('ofName').value.trim();
-    const phone = document.getElementById('ofPhone').value.trim();
+    const phone = getPhoneValue('of');
     submitOrder(name, phone);
   });
 }
@@ -1312,6 +1326,7 @@ function attachEvents(){
   const saveSettingsBtn = document.getElementById('saveSettings');
   if(saveSettingsBtn) saveSettingsBtn.addEventListener('click', async ()=>{
     const newBiz = document.getElementById('setBizName').value.trim();
+    const newCurrency = document.getElementById('setCurrency').value.trim();
     const newPhone = getPhoneValue('setPhone');
     const newPass = document.getElementById('setNewPass').value;
     const currentPass = document.getElementById('setCurrentPass').value;
@@ -1333,6 +1348,9 @@ function attachEvents(){
       }
       if(newBiz && newBiz !== state.workspace.business_name){
         await sb.from('workspaces').update({ business_name: newBiz }).eq('id', state.workspace.id);
+      }
+      if(newCurrency && newCurrency !== state.workspace.currency){
+        await sb.from('workspaces').update({ currency: newCurrency }).eq('id', state.workspace.id);
       }
       if(newPhone){
         const { error: emailErr } = await sb.auth.updateUser({ email: phoneToEmail(newPhone) });
