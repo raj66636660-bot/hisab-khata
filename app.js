@@ -712,8 +712,8 @@ function render(){
 
   const t_ = totals();
   const logoHtml = state.workspace.logo_url
-    ? `<img src="${state.workspace.logo_url}" alt="logo" style="width:34px;height:34px;border-radius:6px;object-fit:cover;">`
-    : `<div style="width:34px;height:34px;border-radius:6px;background:rgba(244,239,226,.15);"></div>`;
+    ? `<img src="${state.workspace.logo_url}" alt="logo" class="brand-logo">`
+    : `<div class="brand-logo-placeholder"></div>`;
 
   let html = `
     <header class="cover">
@@ -1177,7 +1177,7 @@ function renderStorefront(){
     </main>`;
   }
   const logoHtml = state.storefront.logo_url
-    ? `<img src="${state.storefront.logo_url}" alt="logo" style="width:34px;height:34px;border-radius:6px;object-fit:cover;">`
+    ? `<img src="${state.storefront.logo_url}" alt="logo" class="brand-logo">`
     : '';
   const products = state.storefront.products || [];
   const prodRows = products.length===0 ? `<div class="empty"><p>${t('noProductsYet')}</p></div>` :
