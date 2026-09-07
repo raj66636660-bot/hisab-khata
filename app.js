@@ -1,6 +1,15 @@
 const { createClient } = supabase;
 const sb = createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY);
 
+const COUNTRY_CODES = [
+  { code:'880', label_bn:'বাংলাদেশ +৮৮০', label_ar:'بنغلاديش +880' },
+  { code:'964', label_bn:'ইরাক +৯৬৪', label_ar:'العراق +964' },
+  { code:'966', label_bn:'সৌদি আরব +৯৬৬', label_ar:'السعودية +966' },
+  { code:'971', label_bn:'আরব আমিরাত +৯৭১', label_ar:'الإمارات +971' },
+  { code:'91',  label_bn:'ভারত +৯১', label_ar:'الهند +91' },
+  { code:'OTHER', label_bn:'অন্য দেশ (সম্পূর্ণ নম্বর লিখুন)', label_ar:'دولة أخرى (اكتب الرقم كاملاً)' },
+];
+
 // ==========================================================
 // ভাষা / Language (i18n)
 // ==========================================================
@@ -10,17 +19,18 @@ const TRANSLATIONS = {
     tagline: 'গ্রাহক, বিক্রি ও বাকির হিসাব — এক জায়গায়',
     tabLogin: 'লগইন করুন',
     tabActivate: 'নতুন? কোড দিয়ে শুরু করুন',
-    phoneLabel: 'মোবাইল নম্বর (দেশের কোডসহ)',
-    phonePlaceholder: '+8801XXXXXXXXX',
+    localNumPlaceholder: 'স্থানীয় নম্বর (শুরুর ০ ছাড়া)',
+    fullPhonePlaceholder: '+৪৪... সম্পূর্ণ নম্বর কোডসহ',
     passwordLabel: 'পাসওয়ার্ড',
     passwordPlaceholder: 'পাসওয়ার্ড',
     loginBtn: 'প্রবেশ করুন',
     activateCodeLabel: 'অ্যাক্টিভেশন কোড',
     activateCodePlaceholder: 'যেমন: HK-7X92K',
-    activatePhoneLabel: 'আপনার মোবাইল নম্বর (দেশের কোডসহ)',
+    activatePhoneLabel: 'আপনার মোবাইল নম্বর',
     activatePassLabel: 'একটা পাসওয়ার্ড সেট করুন',
     activatePassPlaceholder: 'ন্যূনতম ৬ অক্ষর',
     activateBtn: 'অ্যাক্টিভেট করুন',
+    phoneLabel: 'মোবাইল নম্বর',
     busy: 'অপেক্ষা করুন…',
     errFillLogin: 'মোবাইল নম্বর ও পাসওয়ার্ড দিন।',
     errWrongLogin: 'মোবাইল নম্বর বা পাসওয়ার্ড সঠিক নয়।',
@@ -57,28 +67,33 @@ const TRANSLATIONS = {
     ledgerTitle: 'লেনদেনের হিসাব',
     noCustomerTx: 'এই গ্রাহকের কোনো লেনদেন নেই।',
     addCustomerTitle: 'নতুন গ্রাহক',
+    editCustomerTitle: 'গ্রাহকের তথ্য এডিট করুন',
     nameLabel: 'নাম',
     namePlaceholder: 'যেমন: রহিম উদ্দিন',
-    custPhoneLabel: 'মোবাইল নম্বর (দেশের কোডসহ দিলে ভালো হয়)',
-    custPhonePlaceholder: '+8801XXXXXXXXX',
+    custPhoneLabel: 'মোবাইল নম্বর',
     addressLabel: 'ঠিকানা (ঐচ্ছিক)',
     addressPlaceholder: 'যেমন: মিরপুর, ঢাকা',
     cancel: 'বাতিল',
     save: 'সংরক্ষণ করুন',
+    edit: 'এডিট',
     addTxSaleTitle: 'নতুন বিক্রি যোগ করুন',
+    editTxSaleTitle: 'বিক্রি এডিট করুন',
     addTxPaymentTitle: 'পরিশোধ যোগ করুন',
+    editTxPaymentTitle: 'পরিশোধ এডিট করুন',
     txTypeLabel: 'ধরন',
     txTypeSale: 'বিক্রি (বাকি বাড়বে)',
     txTypePayment: 'পরিশোধ (বাকি কমবে)',
     amountLabel: 'টাকার পরিমাণ',
     noteLabel: 'বিবরণ (ঐচ্ছিক)',
     notePlaceholder: 'যেমন: ৫ কেজি চাল',
+    pickFromProductsLabel: 'পণ্য থেকে বাছুন (ঐচ্ছিক)',
+    pickedTotalLabel: 'বাছাই করা মোট',
     settingsTitle: 'সেটিংস',
     languageLabel: 'ভাষা',
     logoLabel: 'লোগো',
     bizNameLabel: 'ব্যবসার নাম',
     changeLoginPhone: 'লগইন মোবাইল নম্বর পরিবর্তন',
-    changeLoginPhonePh: 'নতুন মোবাইল নম্বর (না বদলালে খালি রাখুন)',
+    changeLoginPhoneNote: '(না বদলালে খালি রাখুন)',
     newPasswordLabel: 'নতুন পাসওয়ার্ড (না বদলালে খালি রাখুন)',
     currentPasswordLabel: 'বর্তমান পাসওয়ার্ড (যেকোনো পরিবর্তন নিশ্চিত করতে আবশ্যক)',
     resetInfo: 'এই বাটনে চাপলে শুধু আপনার নিজের ব্যবসার গ্রাহক ও লেনদেন মুছে যাবে — অন্য কোনো গ্রাহকের ডেটার সাথে এর কোনো সম্পর্ক নেই।',
@@ -91,8 +106,10 @@ const TRANSLATIONS = {
     loading: 'লোড হচ্ছে…',
     saving: 'সংরক্ষণ হচ্ছে…',
     toastCustomerAdded: 'নতুন গ্রাহক যোগ করা হয়েছে',
+    toastCustomerUpdated: 'গ্রাহকের তথ্য আপডেট হয়েছে',
     toastSaleAdded: 'বিক্রি যোগ করা হয়েছে',
     toastPaymentAdded: 'পরিশোধ যোগ করা হয়েছে',
+    toastTxUpdated: 'লেনদেন আপডেট করা হয়েছে',
     toastSettingsSaved: 'সেটিংস সংরক্ষণ করা হয়েছে',
     toastDataDeleted: 'আপনার সব ডেটা মুছে ফেলা হয়েছে',
     currencySuffix: '৳',
@@ -117,6 +134,7 @@ const TRANSLATIONS = {
     productNamePlaceholder: 'যেমন: চাল (৫ কেজি)',
     productPriceLabel: 'দাম',
     addProductTitle: 'নতুন পণ্য',
+    editProductTitle: 'পণ্য এডিট করুন',
     ordersTitle: 'নতুন অর্ডার',
     noOrdersYet: 'এখনো কোনো অর্ডার আসেনি।',
     confirmOrderBtn: 'কনফার্ম করুন',
@@ -138,28 +156,37 @@ const TRANSLATIONS = {
     confirmedLabel: 'কনফার্ম হয়েছে',
     rejectedLabel: 'বাতিল হয়েছে',
     toastProductAdded: 'পণ্য যোগ করা হয়েছে',
+    toastProductUpdated: 'পণ্য আপডেট করা হয়েছে',
     toastProductDeleted: 'পণ্য মুছে ফেলা হয়েছে',
     toastOrderConfirmed: 'অর্ডার কনফার্ম করা হয়েছে ও বিক্রি হিসেবে যোগ হয়েছে',
     toastOrderRejected: 'অর্ডার বাতিল করা হয়েছে',
-    orderFromLabel: 'গ্রাহক',
-    cartTotalLabel: 'মোট',
+    adminTitle: 'অ্যাডমিন প্যানেল',
+    adminSubtitle: 'নতুন কোড তৈরি করুন ও সব কোডের তালিকা দেখুন',
+    createCodeBtn: '+ নতুন কোড তৈরি করুন',
+    codeCreatedTitle: 'নতুন কোড তৈরি হয়েছে',
+    allCodesTitle: 'সব কোডের তালিকা',
+    statusActivated: 'ব্যবহৃত',
+    statusUnused: 'অব্যবহৃত',
+    noBizNameYet: '(এখনো নাম দেওয়া হয়নি)',
+    toastCodeCopied: 'কোড কপি হয়েছে',
   },
   ar: {
     appName: 'دفتر الحسابات',
     tagline: 'حسابات العملاء والمبيعات والمستحقات — في مكان واحد',
     tabLogin: 'تسجيل الدخول',
     tabActivate: 'جديد؟ ابدأ برمز التفعيل',
-    phoneLabel: 'رقم الهاتف (مع رمز الدولة)',
-    phonePlaceholder: '+964XXXXXXXXXX',
+    localNumPlaceholder: 'الرقم المحلي (بدون الصفر الأول)',
+    fullPhonePlaceholder: '+44... الرقم كاملاً مع رمز الدولة',
     passwordLabel: 'كلمة المرور',
     passwordPlaceholder: 'كلمة المرور',
     loginBtn: 'دخول',
     activateCodeLabel: 'رمز التفعيل',
     activateCodePlaceholder: 'مثال: HK-7X92K',
-    activatePhoneLabel: 'رقم هاتفك (مع رمز الدولة)',
+    activatePhoneLabel: 'رقم هاتفك',
     activatePassLabel: 'عيّن كلمة مرور',
     activatePassPlaceholder: '٦ أحرف على الأقل',
     activateBtn: 'تفعيل',
+    phoneLabel: 'رقم الهاتف',
     busy: 'الرجاء الانتظار…',
     errFillLogin: 'أدخل رقم الهاتف وكلمة المرور.',
     errWrongLogin: 'رقم الهاتف أو كلمة المرور غير صحيحة.',
@@ -196,28 +223,33 @@ const TRANSLATIONS = {
     ledgerTitle: 'سجل المعاملات',
     noCustomerTx: 'لا توجد معاملات لهذا العميل.',
     addCustomerTitle: 'عميل جديد',
+    editCustomerTitle: 'تعديل بيانات العميل',
     nameLabel: 'الاسم',
     namePlaceholder: 'مثال: أحمد محمد',
-    custPhoneLabel: 'رقم الهاتف (يفضل مع رمز الدولة)',
-    custPhonePlaceholder: '+964XXXXXXXXXX',
+    custPhoneLabel: 'رقم الهاتف',
     addressLabel: 'العنوان (اختياري)',
     addressPlaceholder: 'مثال: بغداد، الكرادة',
     cancel: 'إلغاء',
     save: 'حفظ',
+    edit: 'تعديل',
     addTxSaleTitle: 'إضافة عملية بيع جديدة',
+    editTxSaleTitle: 'تعديل عملية البيع',
     addTxPaymentTitle: 'إضافة دفعة',
+    editTxPaymentTitle: 'تعديل الدفعة',
     txTypeLabel: 'النوع',
     txTypeSale: 'بيع (سيزيد المستحق)',
     txTypePayment: 'دفعة (سينقص المستحق)',
     amountLabel: 'المبلغ',
     noteLabel: 'ملاحظة (اختياري)',
     notePlaceholder: 'مثال: ٥ كيلو أرز',
+    pickFromProductsLabel: 'اختر من المنتجات (اختياري)',
+    pickedTotalLabel: 'إجمالي المختار',
     settingsTitle: 'الإعدادات',
     languageLabel: 'اللغة',
     logoLabel: 'الشعار',
     bizNameLabel: 'اسم النشاط التجاري',
     changeLoginPhone: 'تغيير رقم هاتف الدخول',
-    changeLoginPhonePh: 'رقم هاتف جديد (اتركه فارغاً إذا لم تُرد التغيير)',
+    changeLoginPhoneNote: '(اتركه فارغاً إذا لم تُرد التغيير)',
     newPasswordLabel: 'كلمة مرور جديدة (اتركها فارغة إذا لم تُرد التغيير)',
     currentPasswordLabel: 'كلمة المرور الحالية (مطلوبة لتأكيد أي تغيير)',
     resetInfo: 'هذا الزر يحذف فقط عملاء ومعاملات نشاطك التجاري الخاص — لا علاقة له ببيانات أي عميل آخر.',
@@ -230,8 +262,10 @@ const TRANSLATIONS = {
     loading: 'جارٍ التحميل…',
     saving: 'جارٍ الحفظ…',
     toastCustomerAdded: 'تمت إضافة عميل جديد',
+    toastCustomerUpdated: 'تم تحديث بيانات العميل',
     toastSaleAdded: 'تمت إضافة عملية البيع',
     toastPaymentAdded: 'تمت إضافة الدفعة',
+    toastTxUpdated: 'تم تحديث المعاملة',
     toastSettingsSaved: 'تم حفظ الإعدادات',
     toastDataDeleted: 'تم حذف جميع بياناتك',
     currencySuffix: '',
@@ -256,6 +290,7 @@ const TRANSLATIONS = {
     productNamePlaceholder: 'مثال: أرز (٥ كيلو)',
     productPriceLabel: 'السعر',
     addProductTitle: 'منتج جديد',
+    editProductTitle: 'تعديل المنتج',
     ordersTitle: 'الطلبات الجديدة',
     noOrdersYet: 'لا توجد طلبات بعد.',
     confirmOrderBtn: 'تأكيد',
@@ -277,11 +312,19 @@ const TRANSLATIONS = {
     confirmedLabel: 'تم التأكيد',
     rejectedLabel: 'مرفوض',
     toastProductAdded: 'تمت إضافة المنتج',
+    toastProductUpdated: 'تم تحديث المنتج',
     toastProductDeleted: 'تم حذف المنتج',
     toastOrderConfirmed: 'تم تأكيد الطلب وإضافته كعملية بيع',
     toastOrderRejected: 'تم رفض الطلب',
-    orderFromLabel: 'العميل',
-    cartTotalLabel: 'الإجمالي',
+    adminTitle: 'لوحة الإدارة',
+    adminSubtitle: 'أنشئ رموزاً جديدة وشاهد جميع الرموز',
+    createCodeBtn: '+ إنشاء رمز جديد',
+    codeCreatedTitle: 'تم إنشاء رمز جديد',
+    allCodesTitle: 'قائمة جميع الرموز',
+    statusActivated: 'مستخدم',
+    statusUnused: 'غير مستخدم',
+    noBizNameYet: '(لم يُحدد الاسم بعد)',
+    toastCodeCopied: 'تم نسخ الرمز',
   }
 };
 function t(key){ return TRANSLATIONS[state.lang][key]; }
@@ -299,13 +342,17 @@ let state = {
   selectedId:null,
   gateTab:'login',
   showAddCustomer:false,
+  editingCustomerId:null,
   showAddTx:false,
+  editingTxId:null,
   showSettings:false,
   showResetConfirm:false,
   showAddProduct:false,
+  editingProductId:null,
   showChannelPicker:false,
   pendingReminder:null,
   txType:'sale',
+  txCart:{},
   toastMsg:null,
   gateError:'',
   gateBusy:false,
@@ -318,6 +365,9 @@ let state = {
   storefrontError:'',
   storefrontBusy:false,
   storefrontDone:false,
+  isAdmin:false,
+  adminWorkspaces:[],
+  lastCreatedCode:'',
 };
 
 function setLang(l){
@@ -336,7 +386,45 @@ function phoneToEmail(phone){ return phone.replace(/[^0-9]/g,'') + '@hisabkhata.
 function currencySuffix(){ return t('currencySuffix') || ''; }
 
 // ==========================================================
-// শুরু / রাউটিং — সাধারণ অ্যাপ vs পাবলিক অর্ডার পেজ
+// কান্ট্রি কোড + ফোন নম্বর গ্রুপ (দুটো আলাদা ঘর: কোড + স্থানীয় নম্বর)
+// ==========================================================
+function phoneGroupHtml(prefix, existingPhone){
+  const isEdit = !!existingPhone;
+  const opts = COUNTRY_CODES.map(c=>{
+    const label = state.lang==='ar' ? c.label_ar : c.label_bn;
+    const selected = (isEdit && c.code==='OTHER') || (!isEdit && c.code==='880');
+    return `<option value="${c.code}" ${selected?'selected':''}>${label}</option>`;
+  }).join('');
+  const numPlaceholder = isEdit ? t('fullPhonePlaceholder') : t('localNumPlaceholder');
+  const numValue = isEdit ? escapeHtml(existingPhone) : '';
+  return `
+    <div class="phone-group">
+      <select id="${prefix}Code" class="phone-code-select" data-pair-id="${prefix}Num">${opts}</select>
+      <input id="${prefix}Num" placeholder="${numPlaceholder}" inputmode="tel" value="${numValue}">
+    </div>`;
+}
+function getPhoneValue(prefix){
+  const codeEl = document.getElementById(prefix+'Code');
+  const numEl = document.getElementById(prefix+'Num');
+  if(!codeEl || !numEl) return '';
+  const code = codeEl.value;
+  const num = numEl.value.trim();
+  if(!num) return '';
+  if(code==='OTHER') return num.startsWith('+') ? num : '+'+num;
+  const cleanNum = num.replace(/^0+/,'');
+  return '+'+code+cleanNum;
+}
+function attachPhoneGroupEvents(root){
+  root.querySelectorAll('.phone-code-select').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const numEl = document.getElementById(sel.dataset.pairId);
+      if(numEl) numEl.placeholder = sel.value==='OTHER' ? t('fullPhonePlaceholder') : t('localNumPlaceholder');
+    });
+  });
+}
+
+// ==========================================================
+// শুরু / রাউটিং
 // ==========================================================
 async function boot(){
   document.documentElement.dir = state.lang === 'ar' ? 'rtl' : 'ltr';
@@ -354,9 +442,24 @@ async function boot(){
 
   const { data:{ session } } = await sb.auth.getSession();
   state.session = session;
-  if(session){ await loadWorkspaceAndData(); }
+  if(session){ await afterLogin(); }
   state.loaded = true;
   render();
+}
+
+async function afterLogin(){
+  const { data: adminCheck } = await sb.rpc('is_admin');
+  if(adminCheck === true){
+    state.isAdmin = true;
+    await loadAdminData();
+  } else {
+    await loadWorkspaceAndData();
+  }
+}
+
+async function loadAdminData(){
+  const { data } = await sb.rpc('admin_list_workspaces');
+  state.adminWorkspaces = data || [];
 }
 
 async function loadStorefront(){
@@ -391,22 +494,44 @@ function setView(v){ state.view=v; state.selectedId=null; render(); }
 function openDetail(id){ state.view='detail'; state.selectedId=id; render(); }
 
 // ==========================================================
-// গ্রাহক ও লেনদেন
+// গ্রাহক (অ্যাড + এডিট)
 // ==========================================================
-async function addCustomer(name, phone, address){
-  const { error } = await sb.from('customers').insert({ workspace_id: state.workspace.id, name, phone, address });
-  if(error){ showToast('Error: '+error.message); return; }
-  const { data } = await sb.from('customers').select('*').order('created_at', {ascending:true});
-  state.customers = data || [];
-  state.showAddCustomer=false; showToast(t('toastCustomerAdded'));
+async function saveCustomer(name, phone, address){
+  if(state.editingCustomerId){
+    const { error } = await sb.from('customers').update({ name, phone, address }).eq('id', state.editingCustomerId);
+    if(error){ showToast('Error: '+error.message); return; }
+    state.customers = state.customers.map(c=> c.id===state.editingCustomerId ? {...c, name, phone, address} : c);
+    showToast(t('toastCustomerUpdated'));
+  } else {
+    const { error } = await sb.from('customers').insert({ workspace_id: state.workspace.id, name, phone, address });
+    if(error){ showToast('Error: '+error.message); return; }
+    const { data } = await sb.from('customers').select('*').order('created_at', {ascending:true});
+    state.customers = data || [];
+    showToast(t('toastCustomerAdded'));
+  }
+  state.showAddCustomer=false; state.editingCustomerId=null;
+  render();
 }
 
-async function addTransaction(customerId, type, amount, note){
+// ==========================================================
+// লেনদেন (অ্যাড + এডিট)
+// ==========================================================
+async function saveTransaction(customerId, type, amount, note){
+  if(state.editingTxId){
+    const { error } = await sb.from('transactions').update({ type, amount, note }).eq('id', state.editingTxId);
+    if(error){ showToast('Error: '+error.message); return; }
+    const { data } = await sb.from('transactions').select('*').order('tx_date', {ascending:false});
+    state.transactions = data || [];
+    state.showAddTx=false; state.editingTxId=null; state.txCart={};
+    showToast(t('toastTxUpdated'));
+    render();
+    return;
+  }
   const { error } = await sb.from('transactions').insert({ workspace_id: state.workspace.id, customer_id: customerId, type, amount, note });
   if(error){ showToast('Error: '+error.message); return; }
   const { data } = await sb.from('transactions').select('*').order('tx_date', {ascending:false});
   state.transactions = data || [];
-  state.showAddTx=false;
+  state.showAddTx=false; state.txCart={};
   showToast(type==='sale' ? t('toastSaleAdded') : t('toastPaymentAdded'));
   const cust = state.customers.find(c=>c.id===customerId);
   if(cust && cust.phone){
@@ -449,7 +574,6 @@ async function sendViaWhatsapp(customerId, type, amount, note){
     showToast(t('toastWaFailed'));
   }
 }
-
 async function sendViaImo(customerId, type, amount, note){
   const cust = state.customers.find(c=>c.id===customerId);
   const msg = buildReminderMessage(customerId, type, amount, note);
@@ -458,14 +582,22 @@ async function sendViaImo(customerId, type, amount, note){
 }
 
 // ==========================================================
-// পণ্য
+// পণ্য (অ্যাড + এডিট)
 // ==========================================================
-async function addProduct(name, price){
-  const { error } = await sb.from('products').insert({ workspace_id: state.workspace.id, name, price });
-  if(error){ showToast('Error: '+error.message); return; }
-  const { data } = await sb.from('products').select('*').order('created_at', {ascending:true});
-  state.products = data || [];
-  state.showAddProduct=false; showToast(t('toastProductAdded'));
+async function saveProduct(name, price){
+  if(state.editingProductId){
+    const { error } = await sb.from('products').update({ name, price }).eq('id', state.editingProductId);
+    if(error){ showToast('Error: '+error.message); return; }
+    state.products = state.products.map(p=> p.id===state.editingProductId ? {...p, name, price} : p);
+    showToast(t('toastProductUpdated'));
+  } else {
+    const { error } = await sb.from('products').insert({ workspace_id: state.workspace.id, name, price });
+    if(error){ showToast('Error: '+error.message); return; }
+    const { data } = await sb.from('products').select('*').order('created_at', {ascending:true});
+    state.products = data || [];
+    showToast(t('toastProductAdded'));
+  }
+  state.showAddProduct=false; state.editingProductId=null;
   render();
 }
 async function deleteProduct(id){
@@ -476,7 +608,7 @@ async function deleteProduct(id){
 }
 
 // ==========================================================
-// অর্ডার (মালিকের ড্যাশবোর্ড থেকে কনফার্ম/বাতিল)
+// অর্ডার
 // ==========================================================
 async function confirmOrder(order){
   let cust = state.customers.find(c=> (c.phone||'').replace(/[^0-9]/g,'') === (order.customer_phone||'').replace(/[^0-9]/g,'') && (c.phone||'')!=='' );
@@ -492,10 +624,9 @@ async function confirmOrder(order){
   await sb.from('orders').update({ status:'confirmed' }).eq('id', order.id);
   state.orders = state.orders.map(o=> o.id===order.id ? {...o, status:'confirmed'} : o);
 
-  await addTransaction(cust.id, 'sale', total, note);
+  await saveTransaction(cust.id, 'sale', total, note);
   showToast(t('toastOrderConfirmed'));
 }
-
 async function rejectOrder(orderId){
   await sb.from('orders').update({ status:'rejected' }).eq('id', orderId);
   state.orders = state.orders.map(o=> o.id===orderId ? {...o, status:'rejected'} : o);
@@ -504,7 +635,7 @@ async function rejectOrder(orderId){
 }
 
 // ==========================================================
-// পাবলিক স্টোরফ্রন্ট (কার্ট + অর্ডার সাবমিট)
+// পাবলিক স্টোরফ্রন্ট
 // ==========================================================
 function cartTotal(){
   if(!state.storefront) return 0;
@@ -544,6 +675,28 @@ async function submitOrder(name, phone){
 }
 
 // ==========================================================
+// টেক্সট থেকে পণ্য-কার্ট (POS স্টাইল ম্যানুয়াল বিক্রি)
+// ==========================================================
+function txCartTotal(){
+  return Object.entries(state.txCart).reduce((sum,[pid,qty])=>{
+    const p = state.products.find(x=>x.id===pid);
+    return sum + (p ? Number(p.price)*qty : 0);
+  },0);
+}
+function txCartNote(){
+  return Object.entries(state.txCart).map(([pid,qty])=>{
+    const p = state.products.find(x=>x.id===pid);
+    return p ? `${p.name} x${bn(qty)}` : '';
+  }).filter(Boolean).join(', ');
+}
+function changeTxCartQty(productId, delta){
+  const cur = state.txCart[productId] || 0;
+  const next = Math.max(0, cur + delta);
+  if(next===0) delete state.txCart[productId]; else state.txCart[productId] = next;
+  render();
+}
+
+// ==========================================================
 // রেন্ডার
 // ==========================================================
 function render(){
@@ -553,7 +706,9 @@ function render(){
     return;
   }
   if(state.publicMode){ root.innerHTML = renderStorefront(); attachStorefrontEvents(); return; }
-  if(!state.session || !state.workspace){ root.innerHTML = renderGate(); attachGateEvents(); return; }
+  if(!state.session){ root.innerHTML = renderGate(); attachGateEvents(); return; }
+  if(state.isAdmin){ root.innerHTML = renderAdminDashboard(); attachAdminEvents(); return; }
+  if(!state.workspace){ root.innerHTML = renderGate(); attachGateEvents(); return; }
 
   const t_ = totals();
   const logoHtml = state.workspace.logo_url
@@ -595,6 +750,7 @@ function render(){
   if(state.toastMsg) html += `<div class="toast">${escapeHtml(state.toastMsg)}</div>`;
 
   root.innerHTML = html;
+  attachPhoneGroupEvents(root);
   attachEvents();
 }
 
@@ -618,11 +774,11 @@ function renderGate(){
         <button data-gatetab="activate" class="${!isLogin?'on':''}">${t('tabActivate')}</button>
       </div>
       ${isLogin ? `
-        <div class="field"><label>${t('phoneLabel')}</label><input id="loginPhone" placeholder="${t('phonePlaceholder')}"></div>
+        <div class="field"><label>${t('phoneLabel')}</label>${phoneGroupHtml('login')}</div>
         <div class="field"><label>${t('passwordLabel')}</label><input id="loginPass" type="password" placeholder="${t('passwordPlaceholder')}"></div>
       ` : `
         <div class="field"><label>${t('activateCodeLabel')}</label><input id="actCode" placeholder="${t('activateCodePlaceholder')}"></div>
-        <div class="field"><label>${t('activatePhoneLabel')}</label><input id="actPhone" placeholder="${t('phonePlaceholder')}"></div>
+        <div class="field"><label>${t('activatePhoneLabel')}</label>${phoneGroupHtml('act')}</div>
         <div class="field"><label>${t('activatePassLabel')}</label><input id="actPass" type="password" placeholder="${t('activatePassPlaceholder')}"></div>
       `}
       ${state.gateError?`<div class="field err">${escapeHtml(state.gateError)}</div>`:''}
@@ -634,6 +790,8 @@ function renderGate(){
 }
 
 function attachGateEvents(){
+  const root = document.getElementById('root');
+  attachPhoneGroupEvents(root);
   document.querySelectorAll('[data-gatetab]').forEach(b=>{
     b.addEventListener('click', ()=>{ state.gateTab=b.dataset.gatetab; state.gateError=''; render(); });
   });
@@ -646,11 +804,11 @@ function attachGateEvents(){
     const isLoginTab = state.gateTab==='login';
     let loginPhone='', loginPass='', code='', phone='', pass='';
     if(isLoginTab){
-      loginPhone = document.getElementById('loginPhone').value.trim();
+      loginPhone = getPhoneValue('login');
       loginPass = document.getElementById('loginPass').value;
     } else {
       code = document.getElementById('actCode').value.trim();
-      phone = document.getElementById('actPhone').value.trim();
+      phone = getPhoneValue('act');
       pass = document.getElementById('actPass').value;
     }
     state.gateError=''; state.gateBusy=true; render();
@@ -660,7 +818,7 @@ function attachGateEvents(){
         const { data, error } = await sb.auth.signInWithPassword({ email: phoneToEmail(loginPhone), password: loginPass });
         if(error) throw new Error(t('errWrongLogin'));
         state.session = data.session;
-        await loadWorkspaceAndData();
+        await afterLogin();
       } else {
         if(!code || !phone || !pass) throw new Error(t('errFillAll'));
         if(pass.length<6) throw new Error(t('errShortPass'));
@@ -740,12 +898,18 @@ function renderDetail(){
     txs.map(tx=>`
       <div class="activity-row" style="cursor:default;">
         <div><div class="who">${tx.type==='sale'?t('typeSale'):t('typePayment')}</div><div class="meta">${bnDate(tx.tx_date)}${tx.note?' · '+escapeHtml(tx.note):''}</div></div>
-        <div class="amt ${tx.type==='sale'?'plus':'minus'}">${tx.type==='sale'?'+':'-'}${bn(tx.amount)}${currencySuffix()}</div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="amt ${tx.type==='sale'?'plus':'minus'}">${tx.type==='sale'?'+':'-'}${bn(tx.amount)}${currencySuffix()}</div>
+          <button class="ghost" data-edittx="${tx.id}" style="padding:4px 9px; font-size:11.5px;">${t('edit')}</button>
+        </div>
       </div>`).join('');
   return `
     <button class="link-back" id="backBtn">${t('backToList')}</button>
     <div class="cust-head">
-      <div class="name">${escapeHtml(cust.name)}</div>
+      <div class="row-between">
+        <div class="name">${escapeHtml(cust.name)}</div>
+        <button class="ghost" data-editcust="${cust.id}" style="padding:5px 12px; font-size:12px;">${t('edit')}</button>
+      </div>
       <div class="phone">${escapeHtml(cust.phone||t('noPhone'))}</div>
       <div class="stats-row">
         <div class="stat"><div class="num">${bn(totalSale)}${currencySuffix()}</div><div class="lbl">${t('totalSaleLabel')}</div></div>
@@ -774,9 +938,10 @@ function renderProducts(){
     rows = state.products.map(p=>`
       <div class="cust-row">
         <div><div class="cust-name">${escapeHtml(p.name)}</div></div>
-        <div style="display:flex; align-items:center; gap:10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
           <div class="amt plus">${bn(p.price)}${currencySuffix()}</div>
-          <button class="ghost" data-delprod="${p.id}" style="padding:5px 10px; font-size:12px;">✕</button>
+          <button class="ghost" data-editprod="${p.id}" style="padding:4px 9px; font-size:11.5px;">${t('edit')}</button>
+          <button class="ghost" data-delprod="${p.id}" style="padding:4px 9px; font-size:12px;">✕</button>
         </div>
       </div>`).join('');
   }
@@ -796,11 +961,11 @@ function renderOrders(){
     const total = (o.order_items||[]).reduce((s,it)=>s+Number(it.price)*Number(it.quantity),0);
     const itemsStr = (o.order_items||[]).map(it=>`${it.product_name} x${bn(it.quantity)}`).join(', ');
     const statusLabel = o.status==='confirmed'?t('confirmedLabel'): o.status==='rejected'?t('rejectedLabel'): t('pendingLabel');
-    const statusClass = o.status==='confirmed'?'paid':(o.status==='rejected'?'due':'');
+    const pillClass = o.status==='confirmed'?'clear':(o.status==='rejected'?'has-due':'has-due');
     return `<div class="cust-head" style="margin-bottom:12px;">
       <div class="row-between">
         <div class="name">${escapeHtml(o.customer_name)}</div>
-        <div class="due-pill ${statusClass==='paid'?'clear':(statusClass==='due'?'has-due':'')}">${statusLabel}</div>
+        <div class="due-pill ${pillClass}">${statusLabel}</div>
       </div>
       <div class="phone">${escapeHtml(o.customer_phone)} · ${bnDate(o.created_at)}</div>
       <p style="font-size:13px; margin:10px 0; color:var(--ink);">${escapeHtml(itemsStr)}</p>
@@ -817,43 +982,72 @@ function renderOrders(){
     html += `<div class="empty"><p>${t('noOrdersYet')}</p></div>`;
   } else {
     html += pending.map(o=>orderCard(o,true)).join('');
-    if(others.length){
-      html += others.map(o=>orderCard(o,false)).join('');
-    }
+    html += others.map(o=>orderCard(o,false)).join('');
   }
   return html;
 }
 
 function renderAddCustomerSheet(){
+  const editing = state.customers.find(c=>c.id===state.editingCustomerId);
   return `<div class="overlay" id="custOverlay"><div class="sheet">
-    <h3>${t('addCustomerTitle')}</h3>
-    <div class="field"><label>${t('nameLabel')}</label><input id="custName" placeholder="${t('namePlaceholder')}"></div>
-    <div class="field"><label>${t('custPhoneLabel')}</label><input id="custPhone" placeholder="${t('custPhonePlaceholder')}"></div>
-    <div class="field"><label>${t('addressLabel')}</label><input id="custAddr" placeholder="${t('addressPlaceholder')}"></div>
+    <h3>${editing ? t('editCustomerTitle') : t('addCustomerTitle')}</h3>
+    <div class="field"><label>${t('nameLabel')}</label><input id="custName" placeholder="${t('namePlaceholder')}" value="${editing?escapeHtml(editing.name):''}"></div>
+    <div class="field"><label>${t('custPhoneLabel')}</label>${phoneGroupHtml('cust', editing?editing.phone:'')}</div>
+    <div class="field"><label>${t('addressLabel')}</label><input id="custAddr" placeholder="${t('addressPlaceholder')}" value="${editing?escapeHtml(editing.address||''):''}"></div>
     <div class="sheet-actions"><button class="ghost" id="cancelCust">${t('cancel')}</button><button class="primary" id="saveCust">${t('save')}</button></div>
   </div></div>`;
 }
 
 function renderAddTxSheet(){
+  const editing = state.transactions.find(tx=>tx.id===state.editingTxId);
+  const title = editing
+    ? (state.txType==='sale' ? t('editTxSaleTitle') : t('editTxPaymentTitle'))
+    : (state.txType==='sale' ? t('addTxSaleTitle') : t('addTxPaymentTitle'));
+  const showPicker = state.txType==='sale' && state.products.length>0 && !editing;
+  let pickerHtml = '';
+  if(showPicker){
+    const rows = state.products.map(p=>{
+      const qty = state.txCart[p.id] || 0;
+      return `<div class="cust-row">
+        <div><div class="cust-name">${escapeHtml(p.name)}</div><div class="cust-phone">${bn(p.price)}${currencySuffix()}</div></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="ghost" data-txqtyminus="${p.id}" style="padding:3px 11px;">−</button>
+          <span style="min-width:18px; text-align:center;">${bn(qty)}</span>
+          <button class="ghost" data-txqtyplus="${p.id}" style="padding:3px 11px;">+</button>
+        </div>
+      </div>`;
+    }).join('');
+    pickerHtml = `
+      <div class="field">
+        <label>${t('pickFromProductsLabel')}</label>
+        <div>${rows}</div>
+        <div class="hint" style="margin-top:6px; font-weight:600;">${t('pickedTotalLabel')}: ${bn(txCartTotal())}${currencySuffix()}</div>
+      </div>
+      <div class="divider"></div>`;
+  }
+  const defaultAmount = (!editing && showPicker && txCartTotal()>0) ? txCartTotal() : (editing ? editing.amount : '');
+  const defaultNote = (!editing && showPicker && txCartTotal()>0) ? txCartNote() : (editing ? (editing.note||'') : '');
   return `<div class="overlay" id="txOverlay"><div class="sheet">
-    <h3>${state.txType==='sale'?t('addTxSaleTitle'):t('addTxPaymentTitle')}</h3>
+    <h3>${title}</h3>
     <div class="field"><label>${t('txTypeLabel')}</label>
       <div class="seg">
-        <button data-type="sale" class="${state.txType==='sale'?'on':''}">${t('txTypeSale')}</button>
-        <button data-type="payment" class="${state.txType==='payment'?'on':''}">${t('txTypePayment')}</button>
+        <button data-type="sale" class="${state.txType==='sale'?'on':''}" ${editing?'disabled':''}>${t('txTypeSale')}</button>
+        <button data-type="payment" class="${state.txType==='payment'?'on':''}" ${editing?'disabled':''}>${t('txTypePayment')}</button>
       </div>
     </div>
-    <div class="field"><label>${t('amountLabel')}</label><input id="txAmount" type="number" inputmode="numeric" placeholder="0"></div>
-    <div class="field"><label>${t('noteLabel')}</label><input id="txNote" placeholder="${t('notePlaceholder')}"></div>
+    ${pickerHtml}
+    <div class="field"><label>${t('amountLabel')}</label><input id="txAmount" type="number" inputmode="numeric" placeholder="0" value="${defaultAmount}"></div>
+    <div class="field"><label>${t('noteLabel')}</label><input id="txNote" placeholder="${t('notePlaceholder')}" value="${escapeHtml(defaultNote)}"></div>
     <div class="sheet-actions"><button class="ghost" id="cancelTx">${t('cancel')}</button><button class="primary" id="saveTx">${t('save')}</button></div>
   </div></div>`;
 }
 
 function renderAddProductSheet(){
+  const editing = state.products.find(p=>p.id===state.editingProductId);
   return `<div class="overlay" id="prodOverlay"><div class="sheet">
-    <h3>${t('addProductTitle')}</h3>
-    <div class="field"><label>${t('productNameLabel')}</label><input id="prodName" placeholder="${t('productNamePlaceholder')}"></div>
-    <div class="field"><label>${t('productPriceLabel')}</label><input id="prodPrice" type="number" inputmode="numeric" placeholder="0"></div>
+    <h3>${editing ? t('editProductTitle') : t('addProductTitle')}</h3>
+    <div class="field"><label>${t('productNameLabel')}</label><input id="prodName" placeholder="${t('productNamePlaceholder')}" value="${editing?escapeHtml(editing.name):''}"></div>
+    <div class="field"><label>${t('productPriceLabel')}</label><input id="prodPrice" type="number" inputmode="numeric" placeholder="0" value="${editing?editing.price:''}"></div>
     <div class="sheet-actions"><button class="ghost" id="cancelProd">${t('cancel')}</button><button class="primary" id="saveProd">${t('save')}</button></div>
   </div></div>`;
 }
@@ -873,7 +1067,7 @@ function renderSettingsSheet(){
     <div class="field"><label>${t('logoLabel')}</label><input type="file" id="logoFile" accept="image/*"></div>
     <div class="field"><label>${t('bizNameLabel')}</label><input id="setBizName" value="${escapeHtml(state.workspace.business_name||'')}"></div>
     <div class="divider"></div>
-    <div class="field"><label>${t('changeLoginPhone')}</label><input id="setPhone" placeholder="${t('changeLoginPhonePh')}"></div>
+    <div class="field"><label>${t('changeLoginPhone')} ${t('changeLoginPhoneNote')}</label>${phoneGroupHtml('setPhone')}</div>
     <div class="field"><label>${t('newPasswordLabel')}</label><input id="setNewPass" type="password" placeholder=""></div>
     <div class="field"><label>${t('currentPasswordLabel')}</label><input id="setCurrentPass" type="password" placeholder=""></div>
     ${state.settingsError?`<div class="field err">${escapeHtml(state.settingsError)}</div>`:''}
@@ -908,9 +1102,63 @@ function renderChannelPicker(){
   </div></div>`;
 }
 
-// ==========================================================
-// পাবলিক স্টোরফ্রন্ট রেন্ডার
-// ==========================================================
+function renderAdminDashboard(){
+  const rows = state.adminWorkspaces.map(w=>`
+    <div class="cust-row">
+      <div>
+        <div class="cust-name">${escapeHtml(w.activation_code)}</div>
+        <div class="cust-phone">${w.business_name ? escapeHtml(w.business_name) : t('noBizNameYet')} · ${bnDate(w.created_at)}</div>
+      </div>
+      <div class="due-pill ${w.activated?'clear':'has-due'}">${w.activated? t('statusActivated') : t('statusUnused')}</div>
+    </div>`).join('');
+  return `
+    <header class="cover">
+      <div class="cover-top">
+        <div><h1 class="cover-title">${t('adminTitle')}</h1></div>
+        <button class="gear-btn" id="adminLogoutBtn" title="${t('logoutBtn')}">⎋</button>
+      </div>
+      <p class="cover-sub">${t('adminSubtitle')}</p>
+    </header>
+    <main>
+      ${langSwitcher()}
+      <button class="primary" id="createCodeBtn" style="width:100%; margin:14px 0;">${t('createCodeBtn')}</button>
+      ${state.lastCreatedCode ? `
+        <div class="cust-head" style="text-align:center;">
+          <div class="lbl" style="color:var(--ink-soft); font-size:12.5px;">${t('codeCreatedTitle')}</div>
+          <div class="cover-title" style="color:var(--green); margin:6px 0;">${escapeHtml(state.lastCreatedCode)}</div>
+          <button class="ghost" id="copyCodeBtn">${t('copyLink')}</button>
+        </div>` : ''}
+      <h2 class="section-title">${t('allCodesTitle')}</h2>
+      ${rows || `<div class="empty"><p>${t('noProductsYet')}</p></div>`}
+      ${state.toastMsg ? `<div class="toast">${escapeHtml(state.toastMsg)}</div>` : ''}
+    </main>
+  `;
+}
+
+function attachAdminEvents(){
+  document.querySelectorAll('[data-setlang]').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.setlang)));
+  const createBtn = document.getElementById('createCodeBtn');
+  if(createBtn) createBtn.addEventListener('click', async ()=>{
+    const { data, error } = await sb.rpc('admin_create_code');
+    if(error){ showToast('Error: '+error.message); return; }
+    state.lastCreatedCode = data;
+    await loadAdminData();
+    render();
+  });
+  const copyCodeBtn = document.getElementById('copyCodeBtn');
+  if(copyCodeBtn) copyCodeBtn.addEventListener('click', async ()=>{
+    try{ await navigator.clipboard.writeText(state.lastCreatedCode); }catch(e){}
+    showToast(t('toastCodeCopied'));
+  });
+  const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+  if(adminLogoutBtn) adminLogoutBtn.addEventListener('click', async ()=>{
+    await sb.auth.signOut();
+    state.session=null; state.isAdmin=false; state.adminWorkspaces=[]; state.lastCreatedCode='';
+    render();
+  });
+}
+
+
 function renderStorefront(){
   if(state.storefrontError && !state.storefront){
     return `<div class="gate-screen"><div class="gate-card" style="text-align:center;"><p>${escapeHtml(state.storefrontError)}</p></div></div>`;
@@ -954,7 +1202,7 @@ function renderStorefront(){
       ${prodRows}
       <h2 class="section-title">${t('orderTotalLabel')}: ${bn(total)}${currencySuffix()}</h2>
       <div class="field"><label>${t('yourNameLabel')}</label><input id="ofName" placeholder="${t('namePlaceholder')}"></div>
-      <div class="field"><label>${t('yourPhoneLabel')}</label><input id="ofPhone" placeholder="${t('phonePlaceholder')}"></div>
+      <div class="field"><label>${t('yourPhoneLabel')}</label><input id="ofPhone" placeholder="+8801XXXXXXXXX"></div>
       ${state.storefrontError?`<div class="field err">${escapeHtml(state.storefrontError)}</div>`:''}
       <button class="primary" id="placeOrderBtn" style="width:100%;" ${state.storefrontBusy?'disabled':''}>${state.storefrontBusy?t('busy'):t('placeOrderBtn')}</button>
     </main>
@@ -986,52 +1234,61 @@ function attachEvents(){
   root.querySelectorAll('[data-setlang]').forEach(b=> b.addEventListener('click', ()=> setLang(b.dataset.setlang)));
 
   const addCustBtn = document.getElementById('addCustBtn') || document.getElementById('emptyAddCust');
-  if(addCustBtn) addCustBtn.addEventListener('click', ()=>{ state.showAddCustomer=true; render(); });
+  if(addCustBtn) addCustBtn.addEventListener('click', ()=>{ state.editingCustomerId=null; state.showAddCustomer=true; render(); });
+  root.querySelectorAll('[data-editcust]').forEach(b=> b.addEventListener('click', ()=>{ state.editingCustomerId=b.dataset.editcust; state.showAddCustomer=true; render(); }));
   const cancelCust = document.getElementById('cancelCust');
-  if(cancelCust) cancelCust.addEventListener('click', ()=>{ state.showAddCustomer=false; render(); });
+  if(cancelCust) cancelCust.addEventListener('click', ()=>{ state.showAddCustomer=false; state.editingCustomerId=null; render(); });
   const custOverlay = document.getElementById('custOverlay');
-  if(custOverlay) custOverlay.addEventListener('click', (e)=>{ if(e.target.id==='custOverlay'){ state.showAddCustomer=false; render(); } });
+  if(custOverlay) custOverlay.addEventListener('click', (e)=>{ if(e.target.id==='custOverlay'){ state.showAddCustomer=false; state.editingCustomerId=null; render(); } });
   const saveCustBtn = document.getElementById('saveCust');
   if(saveCustBtn) saveCustBtn.addEventListener('click', async ()=>{
     const name = document.getElementById('custName').value.trim();
-    const phone = document.getElementById('custPhone').value.trim();
+    const phone = getPhoneValue('cust');
     const addr = document.getElementById('custAddr').value.trim();
     if(!name){ document.getElementById('custName').style.borderColor='var(--due)'; return; }
-    await addCustomer(name, phone, addr); render();
+    await saveCustomer(name, phone, addr);
   });
 
   const backBtn = document.getElementById('backBtn');
   if(backBtn) backBtn.addEventListener('click', ()=>{ state.view='customers'; state.selectedId=null; render(); });
   const addSaleBtn = document.getElementById('addSaleBtn');
-  if(addSaleBtn) addSaleBtn.addEventListener('click', ()=>{ state.txType='sale'; state.showAddTx=true; render(); });
+  if(addSaleBtn) addSaleBtn.addEventListener('click', ()=>{ state.txType='sale'; state.editingTxId=null; state.txCart={}; state.showAddTx=true; render(); });
   const addPaymentBtn = document.getElementById('addPaymentBtn');
-  if(addPaymentBtn) addPaymentBtn.addEventListener('click', ()=>{ state.txType='payment'; state.showAddTx=true; render(); });
-  root.querySelectorAll('.seg button[data-type]').forEach(b=> b.addEventListener('click', ()=>{ state.txType=b.dataset.type; render(); }));
+  if(addPaymentBtn) addPaymentBtn.addEventListener('click', ()=>{ state.txType='payment'; state.editingTxId=null; state.txCart={}; state.showAddTx=true; render(); });
+  root.querySelectorAll('[data-edittx]').forEach(b=> b.addEventListener('click', ()=>{
+    const tx = state.transactions.find(x=>x.id===b.dataset.edittx);
+    if(!tx) return;
+    state.editingTxId = tx.id; state.txType = tx.type; state.txCart={}; state.showAddTx=true; render();
+  }));
+  root.querySelectorAll('.seg button[data-type]').forEach(b=> b.addEventListener('click', ()=>{ if(!state.editingTxId){ state.txType=b.dataset.type; render(); } }));
+  root.querySelectorAll('[data-txqtyplus]').forEach(b=> b.addEventListener('click', ()=> changeTxCartQty(b.dataset.txqtyplus, 1)));
+  root.querySelectorAll('[data-txqtyminus]').forEach(b=> b.addEventListener('click', ()=> changeTxCartQty(b.dataset.txqtyminus, -1)));
   const cancelTx = document.getElementById('cancelTx');
-  if(cancelTx) cancelTx.addEventListener('click', ()=>{ state.showAddTx=false; render(); });
+  if(cancelTx) cancelTx.addEventListener('click', ()=>{ state.showAddTx=false; state.editingTxId=null; state.txCart={}; render(); });
   const txOverlay = document.getElementById('txOverlay');
-  if(txOverlay) txOverlay.addEventListener('click', (e)=>{ if(e.target.id==='txOverlay'){ state.showAddTx=false; render(); } });
+  if(txOverlay) txOverlay.addEventListener('click', (e)=>{ if(e.target.id==='txOverlay'){ state.showAddTx=false; state.editingTxId=null; state.txCart={}; render(); } });
   const saveTxBtn = document.getElementById('saveTx');
   if(saveTxBtn) saveTxBtn.addEventListener('click', async ()=>{
     const amtEl = document.getElementById('txAmount');
     const amount = parseFloat(amtEl.value);
     const note = document.getElementById('txNote').value.trim();
     if(!amount || amount<=0){ amtEl.style.borderColor='var(--due)'; return; }
-    await addTransaction(state.selectedId, state.txType, amount, note);
+    await saveTransaction(state.selectedId, state.txType, amount, note);
   });
 
   const addProdBtn = document.getElementById('addProdBtn');
-  if(addProdBtn) addProdBtn.addEventListener('click', ()=>{ state.showAddProduct=true; render(); });
+  if(addProdBtn) addProdBtn.addEventListener('click', ()=>{ state.editingProductId=null; state.showAddProduct=true; render(); });
+  root.querySelectorAll('[data-editprod]').forEach(b=> b.addEventListener('click', ()=>{ state.editingProductId=b.dataset.editprod; state.showAddProduct=true; render(); }));
   const cancelProd = document.getElementById('cancelProd');
-  if(cancelProd) cancelProd.addEventListener('click', ()=>{ state.showAddProduct=false; render(); });
+  if(cancelProd) cancelProd.addEventListener('click', ()=>{ state.showAddProduct=false; state.editingProductId=null; render(); });
   const prodOverlay = document.getElementById('prodOverlay');
-  if(prodOverlay) prodOverlay.addEventListener('click', (e)=>{ if(e.target.id==='prodOverlay'){ state.showAddProduct=false; render(); } });
+  if(prodOverlay) prodOverlay.addEventListener('click', (e)=>{ if(e.target.id==='prodOverlay'){ state.showAddProduct=false; state.editingProductId=null; render(); } });
   const saveProdBtn = document.getElementById('saveProd');
   if(saveProdBtn) saveProdBtn.addEventListener('click', async ()=>{
     const name = document.getElementById('prodName').value.trim();
     const price = parseFloat(document.getElementById('prodPrice').value);
     if(!name || !price || price<0){ return; }
-    await addProduct(name, price);
+    await saveProduct(name, price);
   });
   root.querySelectorAll('[data-delprod]').forEach(b=> b.addEventListener('click', ()=> deleteProduct(b.dataset.delprod)));
 
@@ -1055,7 +1312,7 @@ function attachEvents(){
   const saveSettingsBtn = document.getElementById('saveSettings');
   if(saveSettingsBtn) saveSettingsBtn.addEventListener('click', async ()=>{
     const newBiz = document.getElementById('setBizName').value.trim();
-    const newPhone = document.getElementById('setPhone').value.trim();
+    const newPhone = getPhoneValue('setPhone');
     const newPass = document.getElementById('setNewPass').value;
     const currentPass = document.getElementById('setCurrentPass').value;
     const logoFile = document.getElementById('logoFile').files[0];
