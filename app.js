@@ -61,7 +61,7 @@ const TRANSLATIONS = {
     totalPaidLabel: 'মোট পরিশোধ',
     currentDueLabel: 'বর্তমান বাকি',
     sendWhatsapp: 'হোয়াটসঅ্যাপে বার্তা পাঠান',
-    sendSms: 'এসএমএস পাঠান',
+    sendImo: 'imo-তে পাঠান (কপি হবে)',
     addSaleBtn: '+ নতুন বিক্রি',
     addPaymentBtn: '+ পরিশোধ যোগ করুন',
     ledgerTitle: 'লেনদেনের হিসাব',
@@ -219,7 +219,7 @@ const TRANSLATIONS = {
     totalPaidLabel: 'إجمالي المدفوع',
     currentDueLabel: 'المستحق الحالي',
     sendWhatsapp: 'إرسال رسالة واتساب',
-    sendSms: 'إرسال رسالة نصية',
+    sendImo: 'إرسال عبر imo (نسخ)',
     addSaleBtn: '+ بيع جديد',
     addPaymentBtn: '+ إضافة دفعة',
     ledgerTitle: 'سجل المعاملات',
@@ -372,6 +372,7 @@ let state = {
   isAdmin:false,
   adminWorkspaces:[],
   lastCreatedCode:'',
+  orderEdits:{},
 };
 
 function setLang(l){
@@ -568,6 +569,14 @@ function smsLink(cust, amount){
   const msg = t('smsMsg')(cust.name, state.workspace.business_name || '', bn(amount)+currencySuffix());
   return `sms:${cust.phone||''}?body=${encodeURIComponent(msg)}`;
 }
+async function sendDueViaImo(customerId){
+  const cust = state.customers.find(c=>c.id===customerId);
+  if(!cust) return;
+  const due = custDue(customerId);
+  const msg = t('whatsappMsg')(cust.name, state.workspace.business_name || '', bn(due)+currencySuffix());
+  try{ await navigator.clipboard.writeText(msg); } catch(e){}
+  showToast(t('toastImoCopied') + ' (' + (cust.phone||'') + ')');
+}
 
 async function sendViaWhatsapp(customerId, type, amount, note){
   const cust = state.customers.find(c=>c.id===customerId);
@@ -618,7 +627,24 @@ async function deleteProduct(id){
 // ==========================================================
 // অর্ডার
 // ==========================================================
+function toggleOrderItemExcluded(orderId, itemId){
+  if(!state.orderEdits[orderId]) state.orderEdits[orderId] = new Set();
+  const set = state.orderEdits[orderId];
+  if(set.has(itemId)) set.delete(itemId); else set.add(itemId);
+  render();
+}
+function getEffectiveItems(order){
+  const excluded = state.orderEdits[order.id];
+  if(!excluded || excluded.size===0) return order.order_items || [];
+  return (order.order_items||[]).filter(it=>!excluded.has(it.id));
+}
+
 async function confirmOrder(order){
+  const effectiveItems = getEffectiveItems(order);
+  const excludedItems = (order.order_items||[]).filter(it=> !effectiveItems.includes(it));
+  if(excludedItems.length){
+    await sb.from('order_items').delete().in('id', excludedItems.map(it=>it.id));
+  }
   let cust = state.customers.find(c=> (c.phone||'').replace(/[^0-9]/g,'') === (order.customer_phone||'').replace(/[^0-9]/g,'') && (c.phone||'')!=='' );
   if(!cust){
     const { data, error } = await sb.from('customers').insert({ workspace_id: state.workspace.id, name: order.customer_name, phone: order.customer_phone, address:'' }).select().single();
@@ -626,11 +652,12 @@ async function confirmOrder(order){
     cust = data;
     state.customers.push(cust);
   }
-  const total = (order.order_items||[]).reduce((s,it)=> s + Number(it.price)*Number(it.quantity), 0);
-  const note = (order.order_items||[]).map(it=> `${it.product_name} x${bn(it.quantity)}`).join(', ');
+  const total = effectiveItems.reduce((s,it)=> s + Number(it.price)*Number(it.quantity), 0);
+  const note = effectiveItems.map(it=> `${it.product_name} x${bn(it.quantity)}`).join(', ');
 
   await sb.from('orders').update({ status:'confirmed' }).eq('id', order.id);
   state.orders = state.orders.map(o=> o.id===order.id ? {...o, status:'confirmed'} : o);
+  delete state.orderEdits[order.id];
 
   await saveTransaction(cust.id, 'sale', total, note);
   showToast(t('toastOrderConfirmed'));
@@ -720,7 +747,7 @@ function render(){
 
   const t_ = totals();
   const logoHtml = state.workspace.logo_url
-    ? `<img src="${state.workspace.logo_url}" alt="logo" class="brand-logo">`
+    ? `<div class="brand-logo-frame"><img src="${state.workspace.logo_url}" alt="logo" class="brand-logo"></div>`
     : `<div class="brand-logo-placeholder"></div>`;
 
   let html = `
@@ -926,7 +953,7 @@ function renderDetail(){
       </div>
       <div class="msg-row">
         <a class="msg-btn wa" href="${due>0?waLink(cust,due):'#'}" target="_blank" rel="noopener" ${due<=0?'style="pointer-events:none;opacity:.4;"':''}>${t('sendWhatsapp')}</a>
-        <a class="msg-btn sms" href="${due>0?smsLink(cust,due):'#'}" ${due<=0?'style="pointer-events:none;opacity:.4;"':''}>${t('sendSms')}</a>
+        <button class="msg-btn sms" data-imodue="${cust.id}" ${due<=0?'disabled style="opacity:.4;"':''}>${t('sendImo')}</button>
       </div>
     </div>
     <div class="add-btns">
@@ -966,21 +993,31 @@ function renderOrders(){
   const pending = state.orders.filter(o=>o.status==='pending');
   const others = state.orders.filter(o=>o.status!=='pending');
   function orderCard(o, showActions){
-    const total = (o.order_items||[]).reduce((s,it)=>s+Number(it.price)*Number(it.quantity),0);
-    const itemsStr = (o.order_items||[]).map(it=>`${it.product_name} x${bn(it.quantity)}`).join(', ');
+    const items = showActions ? getEffectiveItems(o) : (o.order_items||[]);
+    const total = items.reduce((s,it)=>s+Number(it.price)*Number(it.quantity),0);
     const statusLabel = o.status==='confirmed'?t('confirmedLabel'): o.status==='rejected'?t('rejectedLabel'): t('pendingLabel');
     const pillClass = o.status==='confirmed'?'clear':(o.status==='rejected'?'has-due':'has-due');
+    const itemsHtml = showActions
+      ? items.map(it=>`
+        <div class="activity-row" style="cursor:default;">
+          <div class="who">${escapeHtml(it.product_name)} x${bn(it.quantity)}</div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div class="amt plus">${bn(Number(it.price)*Number(it.quantity))}${currencySuffix()}</div>
+            <button class="ghost" data-removeitem="${o.id}|${it.id}" style="padding:3px 9px; font-size:11px;">✕</button>
+          </div>
+        </div>`).join('')
+      : `<p style="font-size:13px; margin:10px 0; color:var(--ink);">${escapeHtml(items.map(it=>`${it.product_name} x${bn(it.quantity)}`).join(', '))}</p>`;
     return `<div class="cust-head" style="margin-bottom:12px;">
       <div class="row-between">
         <div class="name">${escapeHtml(o.customer_name)}</div>
         <div class="due-pill ${pillClass}">${statusLabel}</div>
       </div>
       <div class="phone">${escapeHtml(o.customer_phone)} · ${bnDate(o.created_at)}</div>
-      <p style="font-size:13px; margin:10px 0; color:var(--ink);">${escapeHtml(itemsStr)}</p>
-      <div class="amt plus" style="font-size:16px;">${t('orderTotalLabel')}: ${bn(total)}${currencySuffix()}</div>
+      ${itemsHtml}
+      <div class="amt plus" style="font-size:16px; margin-top:8px;">${t('orderTotalLabel')}: ${bn(total)}${currencySuffix()}</div>
       ${showActions ? `
         <div class="add-btns">
-          <button class="primary" data-confirmorder="${o.id}">${t('confirmOrderBtn')}</button>
+          <button class="primary" data-confirmorder="${o.id}" ${items.length===0?'disabled':''}>${t('confirmOrderBtn')}</button>
           <button class="ghost" data-rejectorder="${o.id}">${t('rejectOrderBtn')}</button>
         </div>` : ''}
     </div>`;
@@ -1186,7 +1223,7 @@ function renderStorefront(){
     </main>`;
   }
   const logoHtml = state.storefront.logo_url
-    ? `<img src="${state.storefront.logo_url}" alt="logo" class="brand-logo">`
+    ? `<div class="brand-logo-frame"><img src="${state.storefront.logo_url}" alt="logo" class="brand-logo"></div>`
     : '';
   const products = state.storefront.products || [];
   const prodRows = products.length===0 ? `<div class="empty"><p>${t('noProductsYet')}</p></div>` :
@@ -1265,6 +1302,7 @@ function attachEvents(){
 
   const backBtn = document.getElementById('backBtn');
   if(backBtn) backBtn.addEventListener('click', ()=>{ state.view='customers'; state.selectedId=null; render(); });
+  root.querySelectorAll('[data-imodue]').forEach(b=> b.addEventListener('click', ()=> sendDueViaImo(b.dataset.imodue)));
   const addSaleBtn = document.getElementById('addSaleBtn');
   if(addSaleBtn) addSaleBtn.addEventListener('click', ()=>{ state.txType='sale'; state.editingTxId=null; state.txCart={}; state.showAddTx=true; render(); });
   const addPaymentBtn = document.getElementById('addPaymentBtn');
@@ -1311,6 +1349,10 @@ function attachEvents(){
     if(order) await confirmOrder(order);
   }));
   root.querySelectorAll('[data-rejectorder]').forEach(b=> b.addEventListener('click', ()=> rejectOrder(b.dataset.rejectorder)));
+  root.querySelectorAll('[data-removeitem]').forEach(b=> b.addEventListener('click', ()=>{
+    const [orderId, itemId] = b.dataset.removeitem.split('|');
+    toggleOrderItemExcluded(orderId, itemId);
+  }));
 
   const cancelSettings = document.getElementById('cancelSettings');
   if(cancelSettings) cancelSettings.addEventListener('click', ()=>{ state.showSettings=false; state.settingsError=''; render(); });
