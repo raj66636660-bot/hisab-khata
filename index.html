@@ -20,8 +20,12 @@
 
   header.cover{background: linear-gradient(180deg,var(--green) 0%, var(--green-deep) 100%); color:#F4EFE2; padding:22px 20px 16px; position:relative; border-bottom:3px solid var(--gold);}
   header.cover::after{content:""; position:absolute; left:0; right:0; bottom:-3px; height:6px; background: repeating-linear-gradient(90deg, var(--gold) 0 10px, transparent 10px 20px); opacity:.55;}
-  .cover-top{display:flex; align-items:flex-start; justify-content:space-between; gap:10px;}
-  .cover-title-wrap{display:flex; align-items:center; gap:10px;}
+  .cover-top{position:relative; display:flex; flex-direction:column; align-items:center; text-align:center; gap:4px; padding-top:4px;}
+  .cover-title-wrap{display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .brand-logo{width:60px; height:60px; border-radius:12px; object-fit:cover; box-shadow:0 2px 6px rgba(0,0,0,.25);}
+  .brand-logo-placeholder{width:60px; height:60px; border-radius:12px; background:rgba(244,239,226,.15); border:1px dashed rgba(244,239,226,.35);}
+  .gear-btn{position:absolute; top:0; right:0;}
+  html[dir="rtl"] .gear-btn{right:auto; left:0;}
   .cover-title{font-family:'Tiro Bangla', serif; font-size:24px; letter-spacing:.3px; margin:0;}
   .gear-btn{background:none; border:1px solid rgba(244,239,226,.4); color:#F4EFE2; width:34px; height:34px; border-radius:50%; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
   .cover-sub{font-size:12.5px; opacity:.75; margin:4px 0 0;}
@@ -112,6 +116,10 @@
   html[dir="rtl"] .cover-title, html[dir="rtl"] .gate-title, html[dir="rtl"] h2.section-title, html[dir="rtl"] .sheet h3{font-family:inherit;}
   html[dir="rtl"] .stat:not(:last-child)::after{right:auto; left:0;}
   html[dir="rtl"] .link-back{text-align:right;}
+
+  .phone-group{display:flex; gap:6px;}
+  .phone-group select{flex:0 0 auto; width:38%; border:1px solid var(--line); background:#fff; padding:9px 4px; font-family:'Hind Siliguri',sans-serif; font-size:12.5px; color:var(--ink);}
+  .phone-group input{flex:1; min-width:0;}
 
   ::-webkit-scrollbar{width:0;height:0;}
 </style>
